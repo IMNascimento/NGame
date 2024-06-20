@@ -18,6 +18,7 @@ def index(request):
             {
                 'game': game,
                 "liked": game.user_liked(user) if user.is_authenticated else False,
+                "commented": game.user_commented(user) if user.is_authenticated else False,
                 "comments": Comment.objects.filter(game=game)
             }
         )
