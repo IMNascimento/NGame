@@ -8,22 +8,26 @@ from django.http import JsonResponse
 @login_required
 def home(request):
     games = Game.objects.all()
-    return render(request, 'catalog/home.html', {'games': games})
+    cart = Cart.objects.filter(user=request.user).first() if request.user.is_authenticated else None
+    cart_count = CartItem.objects.filter(cart=cart).count() if request.user.is_authenticated else 0
+    return render(request, 'catalog/home.html', {'games': games, "cart_count": cart_count,})
 
 def index(request):
     user = request.user
     games = Game.objects.all()
     data_games = []
+    cart = Cart.objects.filter(user=request.user).first() if request.user.is_authenticated else None
+    cart_count = CartItem.objects.filter(cart=cart).count() if request.user.is_authenticated else 0
     for game in games:
         data_games.append(
             {
                 'game': game,
                 "liked": game.user_liked(user) if user.is_authenticated else False,
                 "commented": game.user_commented(user) if user.is_authenticated else False,
-                "comments": Comment.objects.filter(game=game)
+                "comments": Comment.objects.filter(game=game),
             }
         )
-    return render(request, 'catalog/index.html', {'games': data_games})
+    return render(request, 'catalog/index.html', {'games': data_games,"cart_count": cart_count,})
 
 @login_required
 def like_game(request, game_id):
@@ -81,10 +85,11 @@ def add_to_cart(request, game_id):
     game = get_object_or_404(Game, id=game_id)
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_item, created = CartItem.objects.get_or_create(cart=cart, game=game, quantity=1)
+    cart_count = CartItem.objects.filter(cart=cart).count() if request.user.is_authenticated else 0
     if not created:
         cart_item.quantity += 1
         cart_item.save()
-    return JsonResponse({'success': 'true', 'quantity': cart_item.quantity})
+    return JsonResponse({'success': 'true', 'quantity': cart_item.quantity, 'cart_count': cart_count})
 
 def remove_from_cart(request, item_id):
     cart_item = get_object_or_404(CartItem, id=item_id)
@@ -94,7 +99,8 @@ def remove_from_cart(request, item_id):
 def view_cart(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
     intems = CartItem.objects.filter(cart=cart)
-    return render(request, 'catalog/cart.html', {'cart': cart, 'items': intems})
+    cart_count = CartItem.objects.filter(cart=cart).count() if request.user.is_authenticated else 0
+    return render(request, 'catalog/cart.html', {'cart': cart, 'items': intems, 'cart_count': cart_count})
 
 def update_cart_item(request, item_id):
     cart_item = get_object_or_404(CartItem, id=item_id)
